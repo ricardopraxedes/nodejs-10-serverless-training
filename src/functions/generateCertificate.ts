@@ -46,7 +46,9 @@ export async function handle(event: { body: string }) {
 
     const templateHtml = handleTemplate({ id, name, grade })
 
-    await generatePdf(templateHtml)
+    const pdf = await generatePdf(templateHtml)
+
+    await saveToS3(id, pdf)
 
     return {
         statusCode: 201,
@@ -102,4 +104,16 @@ async function generatePdf(templateHtml: string) {
     await browser.close()
 
     return pdf
+}
+
+async function saveToS3(id: string, pdf: Buffer) {
+    const client: S3 = new S3()
+
+    await client.putObject({
+        Bucket: "certificates-nodejs-training",
+        Key: `${id}.pdf`,
+        ACL: "public-read",
+        Body: pdf,
+        ContentType: "application/pdf"
+    }).promise()
 }
