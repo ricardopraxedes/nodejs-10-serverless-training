@@ -1,25 +1,64 @@
-service:
-  name: serverless-training
+service: serverless-training
+
+useDotenv: true
 
 plugins:
   - serverless-offline
   - serverless-webpack
+  - serverless-dynamodb-local
 
 custom:
-  webpackConfig: ./webpack.config.js
-  includeModules: true
+  webpack:
+    webpackConfig: ./webpack.config.js
+    includeModules: true
+  dynamodb:
+    stages:
+      - dev
+      - local
+    start:
+      port: 8000
+      inMemory: true
+      migrate: true
 
 provider:
   name: aws
   lambdaHashingVersion: 20201221
   runtime: nodejs14.x
   region: sa-east-1
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Action:
+            - dynamodb:*
+          Resource: "*"
+        - Effect: "Allow"
+          Action:
+            - s3:*
+          Resource: "*"
 
 functions:
-  hello: 
-    handler: src/functions/hello.handle
+  generateCertificate: 
+    handler: src/functions/generateCertificate.handle
     events:
       - http:
-          path: /hello
-          method: GET
+          path: /generateCertificate
+          method: POST
           cors: true
+        
+resources:
+  Resources:
+    training:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+        TableName: students_certificates
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+          
